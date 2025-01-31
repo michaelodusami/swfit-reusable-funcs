@@ -1,6 +1,18 @@
-import Foundation
+//
+//  util.swift
+//
+//  Created by Michael-Andre Odusami on 1/31/25.
+//  Copyright © 2025 Michael-Andre Odusami. All rights reserved.
+//
 
-/// Decodes a JSON file into an array of structs of type `T`.
+import Foundation
+import SwiftUI
+
+/*
+************************
+MARK: Decode Json Into Struct
+************************
+*/
 public func decodeJsonFileIntoArrayStruct<T: Decodable>(fullFileName: String, fileLocation: String, as type: T.Type = T.self) -> T? {
     
     // Get the file URL based on location
@@ -17,7 +29,11 @@ public func decodeJsonFileIntoArrayStruct<T: Decodable>(fullFileName: String, fi
     return decodeJsonData(jsonData, as: type)
 }
 
-/// Retrieves the URL of the JSON file from the specified location.
+/*
+************************
+MARK: Get Json File From URL
+************************
+*/
 private func getJsonFileUrl(fullFileName: String, fileLocation: String) -> URL? {
     if fileLocation == "Main Bundle" {
         if let url = Bundle.main.url(forResource: fullFileName, withExtension: nil) {
@@ -37,7 +53,11 @@ private func getJsonFileUrl(fullFileName: String, fileLocation: String) -> URL? 
     }
 }
 
-/// Reads data from a given file URL.
+/*
+************************
+MARK: Read Data From Given File
+************************
+*/
 private func readData(from url: URL) -> Data? {
     do {
         return try Data(contentsOf: url)
@@ -47,8 +67,12 @@ private func readData(from url: URL) -> Data? {
     }
 }
 
-/// Decodes JSON data into a specified type.
-private func decodeJsonData<T: Decodable>(_ data: Data, as type: T.Type) -> T? {
+/*
+************************
+MARK: Decode Json Data Into Specific Type
+************************
+*/
+private func decodeJsonData<T: Decodable>(_ data: Data, as type: T.Type = T.self ) -> T? {
     do {
         let decoder = JSONDecoder()
         return try decoder.decode(T.self, from: data)
@@ -56,9 +80,4 @@ private func decodeJsonData<T: Decodable>(_ data: Data, as type: T.Type) -> T? {
         print("Unable to decode JSON data. Make sure your struct attributes match the JSON structure.")
         return nil
     }
-}
-
-/// A helper property to get the document directory URL.
-private var documentDirectory: URL {
-    return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
 }
