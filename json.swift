@@ -1,78 +1,64 @@
-/* Decodes a JSON file into an array of structs of type `T`.
-///
-/// This method reads a JSON file from either the main bundle or the document directory and decodes the file's contents into an array of structs that conform to the `Decodable` protocol.
-///
-/// - Parameters:
-///   - fullFileName: The name of the JSON file to decode. This should include the file extension (e.g., "data.json").
-///   - fileLocation: A string specifying the location of the file. Supported values:
-///     - `"Main Bundle"`: The file is located in the main app bundle.
-///     - `"Document Directory"`: The file is located in the app's document directory.
-///   - type: The type of the struct to decode the JSON into. This defaults to `T.self`.
-///
-/// - Returns: An array of structs of type `T` representing the data in the JSON file.
-/// 
-/// - Important:
-///   The struct type `T` must conform to the `Decodable` protocol, and its properties must match the keys and structure of the JSON file.
-///   If the JSON file or its content is invalid, or if the attribute names in `T` do not match the keys in the JSON, the method will print an error message and force unwrap a potentially `nil` value, causing a runtime crash.
-///
-/// - Example Usage:
-/// ```swift
-/// struct User: Decodable {
-///     let id: Int
-///     let name: String
-/// }
-///
-/// if let users: [User] = decodeJsonFileIntoArrayStruct(fullFileName: "users.json", fileLocation: "Main Bundle") {
-///     print(users)
-/// } else {
-///     print("Failed to decode JSON.")
-/// }
-/// ```
-///
-/// - Note: This method force unwraps the optional values during data reading and decoding. Consider refactoring to use safer optional handling to avoid runtime crashes.
-*/   
-public func decodeJsonFileIntoArrayStruct<T: Decodable>(fullFileName: String, fileLocation: String, as type: T.Type = T.self) -> T {
+import Foundation
+
+/// Decodes a JSON file into an array of structs of type `T`.
+public func decodeJsonFileIntoArrayStruct<T: Decodable>(fullFileName: String, fileLocation: String, as type: T.Type = T.self) -> T? {
     
-    var jsonFileData: Data?
-    var jsonFileUrl: URL?
-    var arrayOfStructs: T?
-    
-    // Get the URL of the JSON file based on its location
-    if fileLocation == "Main Bundle" {
-        let urlOfJsonFileInMainBundle: URL? = Bundle.main.url(forResource: fullFileName, withExtension: nil)
-        
-        if let mainBundleUrl = urlOfJsonFileInMainBundle {
-            jsonFileUrl = mainBundleUrl
-        } else {
-            print("JSON file \(fullFileName) does not exist in main bundle!")
-        }
-        
-    } else {
-        let urlOfJsonFileInDocumentDirectory: URL? = documentDirectory.appendingPathComponent(fullFileName)
-        
-        if let docDirectoryUrl = urlOfJsonFileInDocumentDirectory {
-            jsonFileUrl = docDirectoryUrl
-        } else {
-            print("JSON file \(fullFileName) does not exist in document directory!")
-        }
+    // Get the file URL based on location
+    guard let jsonFileUrl = getJsonFileUrl(fullFileName: fullFileName, fileLocation: fileLocation) else {
+        return nil
     }
-    
-    // Try to load the JSON data from the file
-    do {
-        jsonFileData = try Data(contentsOf: jsonFileUrl!)
-    } catch {
-        print("Unable to obtain JSON file \(fullFileName) content!")
+
+    // Read data from the file
+    guard let jsonData = readData(from: jsonFileUrl) else {
+        return nil
     }
-    
-    // Try to decode the data into an array of structs
-    do {
-        let decoder = JSONDecoder()
-        arrayOfStructs = try decoder.decode(T.self, from: jsonFileData!)
-    } catch {
-        print("Unable to decode JSON file \(fullFileName) because your struct attribute names do not exactly match the JSON file attribute names!")
-    }
-    
-    // Return the decoded array of structs (force unwrapped)
-    return arrayOfStructs!
+
+    // Decode the JSON data into the desired type
+    return decodeJsonData(jsonData, as: type)
 }
 
+/// Retrieves the URL of the JSON file from the specified location.
+private func getJsonFileUrl(fullFileName: String, fileLocation: String) -> URL? {
+    if fileLocation == "Main Bundle" {
+        if let url = Bundle.main.url(forResource: fullFileName, withExtension: nil) {
+            return url
+        } else {
+            print("JSON file \(fullFileName) does not exist in main bundle!")
+            return nil
+        }
+    } else {
+        let documentDirectoryUrl = documentDirectory.appendingPathComponent(fullFileName)
+        if FileManager.default.fileExists(atPath: documentDirectoryUrl.path) {
+            return documentDirectoryUrl
+        } else {
+            print("JSON file \(fullFileName) does not exist in document directory!")
+            return nil
+        }
+    }
+}
+
+/// Reads data from a given file URL.
+private func readData(from url: URL) -> Data? {
+    do {
+        return try Data(contentsOf: url)
+    } catch {
+        print("Unable to read data from \(url.path)!")
+        return nil
+    }
+}
+
+/// Decodes JSON data into a specified type.
+private func decodeJsonData<T: Decodable>(_ data: Data, as type: T.Type) -> T? {
+    do {
+        let decoder = JSONDecoder()
+        return try decoder.decode(T.self, from: data)
+    } catch {
+        print("Unable to decode JSON data. Make sure your struct attributes match the JSON structure.")
+        return nil
+    }
+}
+
+/// A helper property to get the document directory URL.
+private var documentDirectory: URL {
+    return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+}
